@@ -47,6 +47,19 @@ module ActiveRecord
           def next_states_for_current_#{@column_name}
             self.class.state_machines["#{column_name}"].transitions[self.#{@column_name}].keys
           end
+          
+          def valid_events_for_current_#{@column_name}
+            event_names = []
+            
+            self.class.state_events.values.each do |event|
+              event.transitions.each do |transition_name, transitions|
+                event_names << event.name if transitions.detect { |t| self.#{column_name} == t.from_state }
+              end
+            end
+            
+            event_names.uniq!
+            event_names
+          end
         END
         
         @model.class_eval <<-TRANSITIONS
@@ -127,7 +140,7 @@ module ActiveRecord
         end
 
         class Transition
-          attr_reader :to_state
+          attr_reader :from_state, :to_state
           
           def initialize(from_state, to_state, guard)
             @from_state = from_state
