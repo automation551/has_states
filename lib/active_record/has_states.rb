@@ -49,20 +49,13 @@ module ActiveRecord
           end
           
           def valid_events_for_current_#{@column_name}
-            event_names = []
-            
-            self.class.state_events.values.each do |event|
-              event.transitions.each do |transition_name, transitions|
-                event_names << event.name if transitions.detect { |t| self.#{column_name} == t.from_state }
-              end
-            end
-            
-            event_names.uniq!
-            event_names
+            valid_events_for("#{@column_name}")
           end
-        END
-        
-        @model.class_eval <<-TRANSITIONS
+          
+          def current_transition_for_#{@column_name}
+            current_transition_for("#{@column_name}")
+          end
+          
           def create_or_update_without_callbacks_with_#{@column_name}_transitions
             new_record = new_record?
             return create_or_update_without_callbacks_without_#{@column_name}_transitions unless new_record || #{@column_name}_changed?
@@ -77,7 +70,7 @@ module ActiveRecord
           end
           
           alias_method_chain :create_or_update_without_callbacks, :#{@column_name}_transitions
-        TRANSITIONS
+        END
 
         self.instance_eval(&block) if block_given?
       end
@@ -181,6 +174,30 @@ module ActiveRecord
 
         def event_error_for(attr_name)
           @event_error if @event_error && @event_error.last.column_name == attr_name
+        end
+        
+        def valid_events_for(column_name)
+          returning [] do |event_names|
+            self.class.state_events.values.each do |event|
+              event.transitions.each do |transition_name, transitions|
+                event_names << event.name if transitions.detect { |t| self[column_name] == t.from_state }
+              end
+            end
+            
+            event_names.uniq!
+          end
+        end
+        
+        def current_transition_for(column_name)
+          original_value, current_value = attribute_was(column_name), self[column_name]
+          
+          self.class.state_events.values.each do |event|
+            event.transitions.values.each do |transitions|
+              return event.name if transitions.detect { |t| t.from_state == original_value && t.to_state == current_value }
+            end
+          end
+          
+          nil
         end
         
       protected

@@ -378,13 +378,24 @@ class StateTest < Test::Unit::TestCase
   end
   
   def test_next_states
-    assert_equal %w(resolved abandoned), TicketWithState.new(:state => "active").next_states_for_current_state
-    assert_equal %w(ignored active), TicketWithState.new(:state => "open").next_states_for_current_state
+    assert_equal %w(resolved abandoned), create(TicketWithState, :state => "active").next_states_for_current_state
+    assert_equal %w(ignored active), create(TicketWithState, :state => "open").next_states_for_current_state
   end
   
   def test_valid_events
-    assert_equal %w(ignore activate), TicketWithState.new(:state => "open").valid_events_for_current_state
-    assert_equal %w(resolve abandon), TicketWithState.new(:state => "active").valid_events_for_current_state
+    assert_equal %w(ignore activate), create(TicketWithState, :state => "open").valid_events_for_current_state
+    assert_equal %w(resolve abandon), create(TicketWithState, :state => "active").valid_events_for_current_state
+  end
+  
+  def test_current_transition
+    ticket = create(TicketWithState, :state => "open")
+    ticket.state = "active"
+    
+    assert_equal "activate", ticket.current_transition_for_state
+  end
+  
+  def test_current_transition_nil_when_unchanged
+    assert_nil create(TicketWithState, :state => "open").current_transition_for_state
   end
   
   def test_should_callback_before_exit
@@ -478,10 +489,17 @@ class ConcurrentStatesTest < Test::Unit::TestCase
   end
   
   def test_next_states_with_concurrent_states
-    assert_equal %w(unassigned), TicketWithConcurrentStates.new(:other_state => "assigned").next_states_for_current_other_state
+    assert_equal %w(unassigned), create(TicketWithConcurrentStates, :other_state => "assigned").next_states_for_current_other_state
   end
   
   def test_valid_events_with_concurrent_states
-    assert_equal %w(unassign), TicketWithConcurrentStates.new(:other_state => "assigned").valid_events_for_current_other_state
+    assert_equal %w(unassign), create(TicketWithConcurrentStates, :other_state => "assigned").valid_events_for_current_other_state
+  end
+  
+  def test_current_transition_with_concurrent_states
+    ticket = create(TicketWithConcurrentStates, :other_state => "unassigned")
+    ticket.other_state = "assigned"
+    
+    assert_equal "assign", ticket.current_transition_for_other_state
   end
 end
