@@ -377,6 +377,11 @@ class StateTest < Test::Unit::TestCase
     assert_not_nil ticket.errors.on(:state)
   end
   
+  def test_next_states
+    assert_equal %w(resolved abandoned), TicketWithState.new(:state => "active").next_states_for_current_state
+    assert_equal %w(ignored active), TicketWithState.new(:state => "open").next_states_for_current_state
+  end
+  
   def test_should_callback_before_exit
     ticket = create(TicketWithCallbacks)
     assert ! ticket.callbacks_made.blank?
@@ -465,5 +470,9 @@ class ConcurrentStatesTest < Test::Unit::TestCase
     assert ! (ticket.ignored? || ticket.active? || ticket.abandoned? || ticket.resolved?)
     assert ticket.unassigned?
     assert ! ticket.assigned?
+  end
+  
+  def test_next_states_with_concurrent_states
+    assert_equal %w(unassigned), TicketWithConcurrentStates.new(:other_state => "assigned").next_states_for_current_other_state
   end
 end

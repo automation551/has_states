@@ -16,6 +16,8 @@ module ActiveRecord
     class StateMachine
       # TODO: add to list of reserved words to eliminate trouble-making state names
       RESERVED_WORDS = %w(new)
+      
+      attr_reader :transitions
 
       def initialize(model, column_name, state_names, &block)
         @model = model
@@ -40,7 +42,13 @@ module ActiveRecord
         
         @model.class_eval %Q(before_validation_on_create { |record| record.#{@column_name} = '#{@state_names.first}' if record.#{@column_name}.blank? }), __FILE__, __LINE__
         @model.class_eval %Q(validates_state_of :#{@column_name}), __FILE__, __LINE__
-
+        
+        @model.class_eval <<-END
+          def next_states_for_current_#{@column_name}
+            self.class.state_machines["#{column_name}"].transitions[self.#{@column_name}].keys
+          end
+        END
+        
         @model.class_eval <<-TRANSITIONS
           def create_or_update_without_callbacks_with_#{@column_name}_transitions
             new_record = new_record?
